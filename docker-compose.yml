@@ -32,7 +32,6 @@
 #   tmp-volume:  # Definisikan volume tmp-volume yang digunakan oleh kedua container
 
 
-version: '3.10'
 
 services:
   api-server:
@@ -43,13 +42,10 @@ services:
       - "5000:5000"
     depends_on:
       - redis
-      - celery-sharpen
-      - celery-denoise
-      - celery-contrast
-      - celery-combine
     volumes:
       - tmp-volume:/tmp
 
+  # Celery workers
   celery-sharpen:
     build:
       context: .

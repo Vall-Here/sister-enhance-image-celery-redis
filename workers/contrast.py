@@ -4,7 +4,7 @@ import numpy as np
 
 from celery import Celery
 
-app = Celery('tasks.adjust_contrast', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
+app = Celery('tasks.adjust_contrast', broker='redis://redis:6379/0')
 
 def adjust_contrast(image_path):
     image = cv2.imread(image_path)
