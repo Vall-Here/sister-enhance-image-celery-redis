@@ -2,6 +2,11 @@ import os
 import cv2
 import numpy as np
 
+from celery import Celery
+
+app = Celery('task.combine_images', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
+
+
 def combine_images(sharpened_path, denoised_path, contrasted_path):
     # Membaca hasil masing-masing worker
     sharpened = cv2.imread(sharpened_path)

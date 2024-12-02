@@ -4,7 +4,7 @@ import numpy as np
 
 from celery import Celery
 
-app = Celery('tasks.sharpen', broker='redis://redis:6379/0')
+app = Celery('tasks.sharpen', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 
 def sharpen(image_path):
     image_path = os.path.abspath(image_path)

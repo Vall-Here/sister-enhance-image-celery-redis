@@ -63,7 +63,7 @@ from workers.contrast import adjust_contrast
 from workers.combine import combine_images
 
 # Setup Celery dengan Redis sebagai broker
-celery_app = Celery('tasks', broker='redis://redis:6379/0')
+celery_app = Celery('tasks', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 
 # Task untuk sharpen
 @celery_app.task
