@@ -1,0 +1,4 @@
+celery
+opencv-python-headless
+numpy
+# opencv-python

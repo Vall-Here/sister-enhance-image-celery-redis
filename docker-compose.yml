@@ -1,0 +1,99 @@
+# version: '3.10'
+
+# services:
+#   api-server:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     ports:
+#       - "5000:5000"
+#     depends_on:
+#       - redis
+#       - celery
+#     volumes:
+#       - tmp-volume:/tmp  # Gunakan volume yang sama untuk berbagi direktori /tmp
+
+#   celery:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     command: celery -A tasks worker --loglevel=info
+#     depends_on:
+#       - redis
+#     volumes:
+#       - tmp-volume:/tmp  # Gunakan volume yang sama untuk berbagi direktori /tmp
+
+#   redis:
+#     image: "redis:latest"
+#     ports:
+#       - "6379:6379"
+
+# volumes:
+#   tmp-volume:  # Definisikan volume tmp-volume yang digunakan oleh kedua container
+
+
+version: '3.10'
+
+services:
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+      - celery-sharpen
+      - celery-denoise
+      - celery-contrast
+      - celery-combine
+    volumes:
+      - tmp-volume:/tmp
+
+  celery-sharpen:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A tasks.sharpen worker --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - tmp-volume:/tmp
+
+  celery-denoise:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A tasks.denoise worker --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - tmp-volume:/tmp
+
+  celery-contrast:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A tasks.contrast worker --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - tmp-volume:/tmp
+
+  celery-combine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A tasks.combine worker --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - tmp-volume:/tmp
+
+  redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"
+
+volumes:
+  tmp-volume:

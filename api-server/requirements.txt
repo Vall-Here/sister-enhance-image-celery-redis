@@ -1,0 +1,5 @@
+Flask
+celery
+redis
+opencv-python
+numpy 
