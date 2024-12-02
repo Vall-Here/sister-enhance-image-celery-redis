@@ -1,0 +1,9 @@
+from celery import Celery
+from workers.sharpening import sharpen
+
+# Setup Celery untuk worker sharpen
+celery_sharpen = Celery('tasks.sharpen', broker='redis://redis:6379/0')
+
+@celery_sharpen.task
+def sharpen_image(image_path):
+    return sharpen(image_path)

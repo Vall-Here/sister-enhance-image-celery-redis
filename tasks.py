@@ -54,34 +54,33 @@
 #         return {"error": str(e)}
 
 
+
+
 from celery import Celery
 from workers.sharpening import sharpen
 from workers.denoising import denoise
 from workers.contrast import adjust_contrast
 from workers.combine import combine_images
 
-# Setup Celery untuk masing-masing worker
-celery_sharpen = Celery('tasks.sharpen', broker='redis://redis:6379/0')
-celery_denoise = Celery('tasks.denoise', broker='redis://redis:6379/0')
-celery_contrast = Celery('tasks.contrast', broker='redis://redis:6379/0')
-celery_combine = Celery('tasks.combine', broker='redis://redis:6379/0')
+# Setup Celery dengan Redis sebagai broker
+celery_app = Celery('tasks', broker='redis://redis:6379/0')
 
 # Task untuk sharpen
-@celery_sharpen.task
+@celery_app.task
 def sharpen_image(image_path):
     return sharpen(image_path)
 
 # Task untuk denoise
-@celery_denoise.task
+@celery_app.task
 def denoise_image(image_path):
     return denoise(image_path)
 
 # Task untuk adjust contrast
-@celery_contrast.task
+@celery_app.task
 def adjust_contrast_image(image_path):
     return adjust_contrast(image_path)
 
 # Task untuk combine image
-@celery_combine.task
+@celery_app.task
 def combine_image(sharpened_path, denoised_path, contrasted_path):
     return combine_images(sharpened_path, denoised_path, contrasted_path)

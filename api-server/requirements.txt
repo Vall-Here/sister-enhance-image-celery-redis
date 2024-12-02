@@ -1,5 +1,6 @@
 Flask
-celery
+celery==5.2.7 
 redis
 opencv-python
 numpy 
+click

@@ -2,6 +2,10 @@ import os
 import cv2
 import numpy as np
 
+from celery import Celery
+
+app = Celery('tasks.denoise', broker='redis://redis:6379/0')
+
 def denoise(image_path):
     image = cv2.imread(image_path)
     denoised_image = cv2.fastNlMeansDenoisingColored(image, None, 10, 10, 7, 21)

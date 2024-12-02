@@ -53,7 +53,9 @@
 
 from flask import Flask, request, jsonify
 import os
+import sys
 from celery.result import AsyncResult
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tasks import sharpen_image, denoise_image, adjust_contrast_image, combine_image
 
 app = Flask(__name__)
