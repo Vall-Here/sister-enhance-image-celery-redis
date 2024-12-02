@@ -1,38 +1,3 @@
-# version: '3.10'
-
-# services:
-#   api-server:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile
-#     ports:
-#       - "5000:5000"
-#     depends_on:
-#       - redis
-#       - celery
-#     volumes:
-#       - tmp-volume:/tmp  # Gunakan volume yang sama untuk berbagi direktori /tmp
-
-#   celery:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile
-#     command: celery -A tasks worker --loglevel=info
-#     depends_on:
-#       - redis
-#     volumes:
-#       - tmp-volume:/tmp  # Gunakan volume yang sama untuk berbagi direktori /tmp
-
-#   redis:
-#     image: "redis:latest"
-#     ports:
-#       - "6379:6379"
-
-# volumes:
-#   tmp-volume:  # Definisikan volume tmp-volume yang digunakan oleh kedua container
-
-
-
 services:
   api-server:
     build:
@@ -86,10 +51,127 @@ services:
     volumes:
       - tmp-volume:/tmp
 
+  # Flower monitoring
+
   redis:
     image: "redis:latest"
     ports:
       - "6379:6379"
 
+
+
+
 volumes:
   tmp-volume:
+
+
+
+# version: '3.8'
+
+# services:
+#   api-server:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     ports:
+#       - "5000:5000"
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#     volumes:
+#       - tmp-volume:/tmp
+#     networks:
+#       - my_network
+#     restart: always
+
+#   # Celery workers
+#   celery-sharpen:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     command: celery -A tasks.celery_app worker --loglevel=info -Q sharpen_queue
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#     volumes:
+#       - tmp-volume:/tmp
+#     networks:
+#       - my_network
+#     restart: always
+
+#   celery-denoise:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     command: celery -A tasks.celery_app worker --loglevel=info -Q denoise_queue
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#     volumes:
+#       - tmp-volume:/tmp
+#     networks:
+#       - my_network
+#     restart: always
+
+#   celery-contrast:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     command: celery -A tasks.celery_app worker --loglevel=info -Q contrast_queue
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#     volumes:
+#       - tmp-volume:/tmp
+#     networks:
+#       - my_network
+#     restart: always
+
+#   celery-combine:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     command: celery -A tasks.celery_app worker --loglevel=info -Q combine_queue
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#     volumes:
+#       - tmp-volume:/tmp
+#     networks:
+#       - my_network
+#     restart: always
+
+#   # Flower monitoring
+#   flower:
+#     image: mher/flower
+#     ports:
+#       - "5555:5555"
+#     environment:
+#       - FLOWER_BROKER=redis://redis:6379/0
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#     networks:
+#       - my_network
+#     restart: always
+
+#   # Redis service
+#   redis:
+#     image: "redis:latest"
+#     ports:
+#       - "6379:6379"
+#     networks:
+#       - my_network
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+#       interval: 5s
+#       timeout: 3s
+#       retries: 5
+#     restart: always
+
+# volumes:
+#   tmp-volume:
+
+# networks:
+#   my_network:
+#     driver: bridge

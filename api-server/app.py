@@ -79,6 +79,7 @@ def enhance():
         print(f"Error saving image: {str(e)}")
         return jsonify({"error": "Failed to save image"}), 500
     
+    # task = enhance_image.apply_async(args=[image_path])  
     task = enhance_image(image_path) 
     return jsonify({"task_id": task.id, "status": "Task is processing"}), 202
 
