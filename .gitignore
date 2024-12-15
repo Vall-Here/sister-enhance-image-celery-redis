@@ -1,10 +1,8 @@
-.Python
-[Bb]in
-[Ii]nclude
-[Ll]ib
-[Ll]ib64
-[Ll]ocal
-[Ss]cripts
-pyvenv.cfg
+# Environments
+.env
 .venv
-pip-selfcheck.json
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
