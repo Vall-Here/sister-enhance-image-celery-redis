@@ -4,7 +4,7 @@ import cv2
 import io
 from PIL import Image
 import base64
-from tasks import celery_app, enhance_and_denoise_task
+from tasks import celery_app, enhance_and_denoise_task, enhance_contrast_task, combine_task
 
 app = Flask(__name__)
 
@@ -20,25 +20,30 @@ def process_image():
     image_file = request.files['image']
     img = Image.open(image_file)
     
-    # Konversi gambar menjadi array numpy
     img_np = np.array(img)
     
-    # Ambil dimensi gambar
     height, width, channels = img_np.shape
-
-    # Convert gambar menjadi byte array
     image_data = img_np.tobytes()
 
-    # Kirim image_data dan dimensi gambar (height, width, channels)
-    task = celery_app.send_task(
+    enhance_task = celery_app.send_task(
         "tasks.enhance_and_denoise_task", 
         args=[image_data, (height, width, channels)]
     )
 
-    return jsonify({"message": "Image processing has been started", "task_id": task.id}), 202
+    contrast_task = celery_app.send_task(
+        "tasks.enhance_contrast_task", 
+        args=[image_data, (height, width, channels)]
+    )
 
+    enhanced_and_denoised_image = enhance_task.get(timeout=10) 
+    enhanced_contrast_image = contrast_task.get(timeout=10)
 
+    combine_task = celery_app.send_task(
+        "tasks.combine_task", 
+        args=[enhanced_and_denoised_image, enhanced_contrast_image]
+    )
 
+    return jsonify({"message": "Image processing pipeline has started", "task_id": combine_task.id}), 202
 
 
 
@@ -50,18 +55,16 @@ def get_result(task_id):
         return jsonify({"message": "Task is still processing"}), 202
     elif task.state == 'FAILURE':
         return jsonify({"message": "Task failed"}), 500
-    
-    # Ambil hasil gambar yang sudah diproses dari task
-    processed_image_data = task.result
-
-    # Kirim gambar yang sudah diproses sebagai file PNG (atau format lain sesuai kebutuhan)
-    return send_file(
-        io.BytesIO(processed_image_data),  # Konversi byte array menjadi file-like object
-        mimetype='image/png',              # Jenis mimetype gambar (sesuaikan dengan format gambar Anda)
-        as_attachment=True,                # Menandakan bahwa ini adalah file yang akan diunduh
-        download_name='processed_image.png'  # Nama file yang diunduh
-    )
-
+    elif task.state == 'SUCCESS':
+        processed_image_data = task.result
+        return send_file(
+            io.BytesIO(processed_image_data),  
+            mimetype='image/png',             
+            as_attachment=True,                
+            download_name='processed_image.png' 
+        )
+    else:
+        return jsonify({"message": "Task is in an unknown state"}), 500
 
 
 if __name__ == '__main__':
