@@ -32,7 +32,6 @@ def enhance_contrast_task(image_data, image_shape):
     height, width, channels = image_shape
     image = image.reshape((height, width, channels))
 
-    # Meningkatkan kontras menggunakan histogram equalization
     enhanced_image = cv2.convertScaleAbs(image, alpha=2.0, beta=0)
 
     _, buffer = cv2.imencode('.png', enhanced_image)

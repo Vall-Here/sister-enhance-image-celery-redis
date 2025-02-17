@@ -1,71 +1,75 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, render_template
+from flask_cors import CORS
+import base64
 import numpy as np
 import cv2
-import io
 from PIL import Image
-import base64
 from tasks import celery_app, enhance_and_denoise_task, enhance_contrast_task, combine_task
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', template_folder='templates')
+CORS(app)
 
 @app.route('/')
 def index():
-    return jsonify({"message": "Image Processing API"}), 200
+    return render_template('index.html')
 
-@app.route('/process_image', methods=['POST'])
-def process_image():
-    if 'image' not in request.files:
-        return jsonify({"message": "No image file provided"}), 400
-    
-    image_file = request.files['image']
-    img = Image.open(image_file)
-    
-    img_np = np.array(img)
-    
-    height, width, channels = img_np.shape
-    image_data = img_np.tobytes()
+@app.route('/process_images', methods=['POST'])
+def process_images():
+    if 'images' not in request.files:
+        return jsonify({"message": "No image files provided"}), 400
 
-    enhance_task = celery_app.send_task(
-        "tasks.enhance_and_denoise_task", 
-        args=[image_data, (height, width, channels)]
-    )
+    files = request.files.getlist('images')
+    task_ids = []
 
-    contrast_task = celery_app.send_task(
-        "tasks.enhance_contrast_task", 
-        args=[image_data, (height, width, channels)]
-    )
+    for image_file in files:
+        img = Image.open(image_file)
+        img_np = np.array(img)
+        height, width, channels = img_np.shape
+        image_data = img_np.tobytes()
 
-    enhanced_and_denoised_image = enhance_task.get(timeout=10) 
-    enhanced_contrast_image = contrast_task.get(timeout=10)
+        enhance_task = celery_app.send_task(
+            "tasks.enhance_and_denoise_task", 
+            args=[image_data, (height, width, channels)]
+        )
 
-    combine_task = celery_app.send_task(
-        "tasks.combine_task", 
-        args=[enhanced_and_denoised_image, enhanced_contrast_image]
-    )
+        contrast_task = celery_app.send_task(
+            "tasks.enhance_contrast_task", 
+            args=[image_data, (height, width, channels)]
+        )
 
-    return jsonify({"message": "Image processing pipeline has started", "task_id": combine_task.id}), 202
+        enhanced_and_denoised_image = enhance_task.get(timeout=30)
+        enhanced_contrast_image = contrast_task.get(timeout=30)
 
+        combine_task = celery_app.send_task(
+            "tasks.combine_task",
+            args=[enhanced_and_denoised_image, enhanced_contrast_image]
+        )
+
+        task_ids.append(combine_task.id)
+
+    return jsonify({"message": "Image processing tasks have started", "task_ids": task_ids}), 202
 
 
 @app.route('/get_result/<task_id>', methods=['GET'])
 def get_result(task_id):
     task = celery_app.AsyncResult(task_id)
-    
+
     if task.state == 'PENDING':
         return jsonify({"message": "Task is still processing"}), 202
     elif task.state == 'FAILURE':
         return jsonify({"message": "Task failed"}), 500
     elif task.state == 'SUCCESS':
         processed_image_data = task.result
-        return send_file(
-            io.BytesIO(processed_image_data),  
-            mimetype='image/png',             
-            as_attachment=True,                
-            download_name='processed_image.png' 
-        )
+        
+        # Convert binary data to base64 string for blob download
+        processed_image_b64 = base64.b64encode(processed_image_data).decode('utf-8')
+
+        return jsonify({
+            "image_url": f"data:image/jpeg;base64,{processed_image_b64}",
+            "task_id": task_id
+        })
     else:
         return jsonify({"message": "Task is in an unknown state"}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

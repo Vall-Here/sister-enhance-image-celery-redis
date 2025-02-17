@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processor</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center">
+    <div class="max-w-3xl w-full bg-white shadow-lg rounded-lg p-8">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Image Processing API</h1>
+        
+        <form id="uploadForm" class="space-y-4" method='POST' enctype='multipart/form-data'>
+            <label class="block">
+                <span class="text-gray-700 font-medium">Upload Image</span>
+                <input multiple type="file" id="imageFiles" class="block w-full mt-2 file:border file:border-gray-300 file:rounded file:px-3 file:py-2 file:bg-gray-50 file:text-gray-700">
+            </label>
+
+            <button type="button" id="uploadButton" class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Process Images
+            </button>
+        </form>
+
+        <div id="resultSection" class="hidden mt-6 text-center">
+            <p class="text-gray-700 font-medium">Processed Images:</p>
+            <div id="imageResults" class="space-y-4">
+                <!-- Temp placeholders for images -->
+            </div>
+        </div>
+
+        <div id="loadingSection" class="hidden mt-4 text-center">
+            <p class="text-gray-700">Processing... <span id="elapsedTime"></span></p>
+        </div>
+
+        <div id="errorSection" class="hidden mt-4 text-center text-red-500">
+            <p id="errorMessage"></p>
+        </div>
+    </div>
+
+    <script>
+        const uploadButton = document.getElementById("uploadButton");
+        const imageFiles = document.getElementById("imageFiles");
+        const resultSection = document.getElementById("resultSection");
+        const loadingSection = document.getElementById("loadingSection");
+        const errorSection = document.getElementById("errorSection");
+        const errorMessage = document.getElementById("errorMessage");
+        const imageResults = document.getElementById("imageResults");
+        const elapsedTimeElement = document.getElementById("elapsedTime");
+
+        uploadButton.addEventListener("click", async () => {
+            const files = imageFiles.files;
+            if (files.length === 0) {
+                alert("Please upload some images!");
+                return;
+            }
+
+            const formData = new FormData();
+            for (const file of files) {
+                formData.append("images", file);  // Mengirimkan gambar dalam array
+            }
+
+            // Tampilkan bagian loading
+            loadingSection.classList.remove("hidden");
+
+            try {
+                // Kirim gambar ke endpoint /process_images
+                const response = await fetch("http://localhost:5000/process_images", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                const result = await response.json();
+                if (response.status === 202) {
+                    const taskIds = result.task_ids; // Mengambil banyak task_ids
+                    if (taskIds && taskIds.length > 0) {
+                        // Polling untuk setiap task_id
+                        for (let taskId of taskIds) {
+                            await pollForResult(taskId);  // Poll untuk setiap task_id
+                        }
+                    }
+                } else {
+                    alert(result.message || "An error occurred.");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                errorMessage.textContent = "Something went wrong. Please check your API.";
+                errorSection.classList.remove("hidden");
+            }
+        });
+
+        async function pollForResult(taskId) {
+            let isCompleted = false;
+            const startTime = Date.now();  // Waktu mulai polling
+            while (!isCompleted) {
+                try {
+                    const taskResponse = await fetch(`http://localhost:5000/get_result/${taskId}`);
+
+                    if (taskResponse.status === 200) {
+                        const result = await taskResponse.json();
+                        const imageUrl = result.image_url;
+
+                        // Tampilkan gambar yang sudah diproses
+                        const imgElement = document.createElement("img");
+                        imgElement.src = imageUrl;
+                        imgElement.classList.add("max-w-full", "rounded", "border", "border-gray-200", "mx-auto");
+                        imageResults.appendChild(imgElement);
+
+                        // Link untuk download
+                        const downloadLink = document.createElement("a");
+                        downloadLink.href = imageUrl;
+                        downloadLink.download = `processed_image_${taskId}.jpg`;  // Download filename
+                        downloadLink.textContent = "Download Processed Image";
+                        downloadLink.classList.add("block", "text-center", "text-blue-500", "underline", "cursor-pointer", "mt-2");
+
+                        // Menambahkan link download setelah gambar
+                        imageResults.appendChild(downloadLink);
+
+                        // Pastikan bagian hasil dipreveiw
+                        resultSection.classList.remove("hidden");
+                        loadingSection.classList.add("hidden");
+
+                        isCompleted = true;
+                    } else if (taskResponse.status === 500) {
+                        alert("Task failed! Please try again.");
+                        isCompleted = true;
+                    } else {
+                        // Update waktu yang telah berlalu setiap interval
+                        const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);  // Waktu dalam detik
+                        elapsedTimeElement.textContent = `Time Elapsed: ${elapsedTime} seconds`;
+
+                        await new Promise(resolve => setTimeout(resolve, 2000)); // Tunggu sebelum mencoba lagi
+                    }
+                } catch (error) {
+                    console.error("Error while fetching result:", error);
+                    errorMessage.textContent = "Failed to fetch result. Please try again.";
+                    errorSection.classList.remove("hidden");
+                    loadingSection.classList.add("hidden");
+                    isCompleted = true;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
